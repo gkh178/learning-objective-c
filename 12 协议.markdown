@@ -1,0 +1,134 @@
+﻿# 12 协议
+
+Tags: Objective-C
+
+---
+
+协议：用@protocol来指定，相当于Java中的接口，一般用来定义一些通用的方法规范，这些方法只有声明而不需要实现，协议提供给类使用后需要在类的实现部分实现类遵守的所有协议中的方法。在OC中，类不能多重继承，而协议可以，一个协议可以继承多个不同的协议形成一个新协议，类的interface部分指定了类的父类是谁，遵守了哪些协议，定义语法如下：
+
+```
+@interface 类名: 父类名 <协议1, 协议2,...>
+@end
+```
+下面是代码示例：
+**GKHOutput.h**
+```objective-c
+#import <Foundation/Foundation.h>
+//定义一个名为GKHOutput的协议，该协议继承自NSObject协议
+@protocol GKHOutput <NSObject>
+//定义协议的方法
+@required //遵守该协议的类必须实现的方法，协议中的方法默认是@required的
+- (void) output;
+- (void) addData:(NSString *)msg;
+
+@optional //遵守该协议的类可选实现的方法
+- (void) removeData:(NSString*)msg;
+@end
+```
+**GKHProductable.h**
+```objective-c
+#import <Foundation/Foundation.h>
+//定义一个名为GKHProductable的协议，该协议继承自NSObject协议
+@protocol GKHProductable <NSObject>
+//定义协议的方法
+- (NSDate *) getProduceTime;
+@end
+```
+**GKHPrintable.h**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "GKHOutput.h"
+#import "GKHProductable.h"
+
+//定义一个名为GKHPrintable的协议，该协议继承了GKHOutput和GKHProductable协议
+@protocol GKHPrintable <GKHOutput, GKHProductable>
+//定义协议的方法
+- (NSString *) printColor;
+@end
+```
+**GKHPrint.h**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "GKHPrintable.h"
+
+//定义一个类GKHPrinter，继承自NSObject，并遵守GKHPrintable协议
+@interface GKHPrinter : NSObject <GKHPrintable>
+
+@end
+```
+**GKHPrint.m**
+```objective-c
+#import "GKHPrinter.h"
+#define MAX_CACHE_LINE 10
+
+@implementation GKHPrinter {
+    NSString *printData[MAX_CACHE_LINE];//打印机的队列数组
+    int dataNum;//记录当前打印机需要打印的作业数
+}
+
+//实现类遵守的协议的所有方法
+- (void) output {
+    //只有有作业就打印
+    while (dataNum > 0) {
+        NSLog(@"打印机使用%@打印：%@", self.printColor, printData[0]);
+        --dataNum;
+        //作业队列整体前移一位
+        for (int i = 0; i < dataNum; ++i) {
+            printData[i] = printData[i + 1];
+        }
+    }
+}
+
+- (void) addData:(NSString *)msg {
+    if (dataNum > MAX_CACHE_LINE) {
+        NSLog(@"作业队列已满，添加作业失败");
+    }
+    else {
+        //把需要添加的数据添加到作业队列
+        printData[dataNum++] = msg;
+    }
+}
+
+- (NSDate *) getProduceTime {
+    return [[NSDate alloc] init];
+}
+
+- (NSString *) printColor {
+    return @"黑色";
+}
+@end
+```
+**main.h**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "GKHPrinter.h"
+
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        //创建GKHPrinter对象
+        GKHPrinter *printer = [[GKHPrinter alloc] init];
+        [printer addData:@"中国"];
+        [printer addData:@"日本"];
+        [printer output];
+        [printer addData:@"韩国"];
+        [printer addData:@"朝鲜"];
+        [printer output];
+        //创建一个GKHPrinter对象当成GKHProductable使用，跟java中的接口类型一个道理，实现多态
+        NSObject<GKHProductable> *p = [[GKHPrinter alloc] init];
+        //调用GKHProductable协议定义的方法，也只能调用其中定义的方法
+        NSLog(@"%@", [p getProduceTime]);
+        //创建一个GKHPrinter对象当成GKHOutput使用
+        id<GKHOutput> p2 = [[GKHPrinter alloc] init];//这里id类型不用指针，因为本身就包含了指针的含义
+        [p2 addData:@"孙悟空"];
+        [p2 addData:@"沙和尚"];
+        [p2 output];
+    }
+    return 0;
+}
+```
+
+
+
+
+
+

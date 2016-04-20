@@ -1,0 +1,181 @@
+﻿# 15 手动内存管理
+
+Tags: Objective-C
+
+---
+
+XCode5以前，对象的内存管理都需要手动管理，后来有了ARC之后才不需要手动管理，但是理解手动内存管理有助于我们编写更高效率的代码。
+
+对象的引用计数规则：
+1. 当调用以alloc、new、copyXXX、mutableCopyXXX名字开头的方法创建对象时，对象的引用计数加1。
+2. `[objectPointer retain]`  对象的引用计数加1，然后返回对象本身。
+3. `[objectPointer release]` 对象的引用计数减1。
+4. `[objectPointer autorelease]` 将对象添加到自动释放池中，不改变对象的引用计数。
+5. `[objectPointer retainCount]` 返回对象的引用计数的值。
+6. 对象的引用计数为0时，会调用该对象继承自NSObject的重写的dealloc方法，方法内会释放对象所持有的其它对象（通常是调用被持有对象的release方法将引用计数减1），最后调用[super dealloc]方法。
+7. 谁为对象添加引用计数，就要在退出前将对象的引用计数减1，也成为谁retain谁release，通常retain release是对称的。
+
+自动释放池：
+存放对象的容器（如NSMutableArray集合，每个元素是一个对象的指针），将对象添加到自动释放池就是将对象添加到NSMutable集合中，而`NSAutoreleasePool`类又重写了`release`方法（依次调用集合中的每个对象的release方法）。`NSAutoreleasePool`对象本身也有引用计数，当调用`[NSAutoreleasePool对象 release]`时候，NSAutoreleasePool对象的引用计数变为0然后调用dealloc方法，先回收池中所有的对象然后回收释放池。
+1. `[NSAutoreleasePool对象 release]`：不仅回收释放池内的对象然后还回收释放池。
+2. `[NSAutoreleasePool对象 drain]`：只回收释放池内的对象不回收释放池。
+
+本文所有的代码工程都需要关闭ARC，因为在XCode7上，ARC是自动开启的，我们需要手动内存管理，就需要将Objective-C Automatic Reference Counting设置为NO，关闭方法下图：
+![屏幕快照 2015-12-02 00.13.43.png-72.6kB][1]
+
+代码示例：
+**GKHItem.h**
+```objective-c
+#import <Foundation/Foundation.h>
+
+@interface GKHItem : NSObject
+
+@end
+```
+**GKHItem.m**
+```objective-c
+#import "GKHItem.h"
+
+@implementation GKHItem
+
+//重写init方法
+- (id) init {
+    if (self = [super init]) {
+        NSLog(@"init方法中，引用计数为：%ld", self.retainCount);
+    }
+    return self;
+}
+
+//重写delloc方法
+- (void) dealloc {
+    NSLog(@"系统开始销毁GKHItem对象了，再见！");
+    [super dealloc];
+}
+
+@end
+```
+**GKHUser.h**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "GKHItem.h"
+
+@interface GKHUser : NSObject {
+    GKHItem *_item;//定义GKHUser持有GKHItem对象
+}
+
+- (void) setItem:(GKHItem *)item;
+- (GKHItem *) item;
+@end
+```
+**GKHUser.m**
+```objective-c
+#import "GKHUser.h"
+
+@implementation GKHUser
+
+- (void) setItem:(GKHItem *)item {
+    if (_item != item) {
+        [_item release];//_item本来持有的对象的引用计数-1
+        _item = [item retain];//item持有的对象引用计数+1，并赋给_item
+    }
+}
+
+- (GKHItem *) item {
+    return _item;
+}
+
+//重写delloc方法
+- (void) dealloc {
+    [_item release];//持有的GKHItem对象引用计数-1
+    NSLog(@"系统开始销毁GKHUser对象");
+    [super dealloc];
+}
+
+@end
+```
+**MRCTest.m**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "GKHUser.h"
+
+int main(int argc, const char * argv[]) {
+    GKHItem *item = [GKHItem new];
+    NSLog(@"item的引用计数为：%ld", item.retainCount);
+        
+    GKHUser *user = [[GKHUser alloc] init];
+    [user setItem:item];
+    NSLog(@"被GKHUser对象持有后，item的引用计数为：%ld", item.retainCount);
+        
+    GKHItem *item2 = [GKHItem new];
+    [user setItem:item2];
+    NSLog(@"item的引用计数为：%ld", item.retainCount);//1
+    NSLog(@"item2的引用计数为：%ld", item2.retainCount);//2
+    NSLog(@"user的引用计数为：%ld", user.retainCount);//1
+    
+    [item dealloc];
+    [user dealloc];
+    [item2 dealloc];
+ 
+    return 0;
+}
+@end
+```
+MRCTest.m的运行结果如下：
+> init方法中，引用计数为：1
+item的引用计数为：1
+被GKHUser对象持有后，item的引用计数为：2
+init方法中，引用计数为：1
+item的引用计数为：1
+item2的引用计数为：2
+user的引用计数为：1
+系统开始销毁GKHItem对象了，再见！
+系统开始销毁GKHUser对象
+系统开始销毁GKHItem对象了，再见！
+
+**NSAutoReleasePoolTest.m**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "GKHItem.h"
+#import "GKHUser.h"
+
+GKHItem * productItem() {
+    GKHItem *item = [GKHItem new];//引用计数为1
+    return [item autorelease];//将item对象添加到自动释放池
+}
+
+int main(int argc, const char * argv[]) {
+    //创建自动释放池
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    
+    GKHItem *it = productItem();//it的引用计数为1
+    GKHUser *ur = [[GKHUser alloc] init];//创建GKHUser对象ur
+    [ur setItem:it];//ur持有it
+    [ur autorelease];//将ur添加到自动释放池
+    
+    NSLog(@"it的引用计数为：%ld", it.retainCount);//it的引用计数为2
+    NSLog(@"ur的引用计数为：%ld", ur.retainCount);//ur的引用计数为1
+    
+    GKHItem *it2 = [[[GKHItem alloc] init] autorelease];
+    NSLog(@"it2的引用计数为：%ld", it2.retainCount);//it2的引用计数为1
+    GKHItem *it3 = [[[GKHItem alloc] init] autorelease];
+    NSLog(@"it3的引用计数为：%ld", it3.retainCount);//it3的引用计数为1
+    
+    [pool release];//释放池的引用计数为0后，释放其中的所有对象，释放的顺序跟添加的顺序相反
+    return 0;
+}
+```
+NSAutoReleasePoolTest.m运行结果如下：
+> it的引用计数为：2
+ur的引用计数为：1
+init方法中，引用计数为：1
+it2的引用计数为：1
+init方法中，引用计数为：1
+it3的引用计数为：1
+系统开始销毁GKHItem对象了，再见！
+系统开始销毁GKHItem对象了，再见！
+系统开始销毁GKHUser对象
+系统开始销毁GKHItem对象了，再见！
+
+
+
+  [1]: http://static.zybuluo.com/gkh178/gyl10y8kfipjiplffanpaj3b/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202015-12-02%2000.13.43.png

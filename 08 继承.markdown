@@ -1,0 +1,121 @@
+﻿# 08 继承
+
+Tags: Objective-C
+
+----
+
+继承是面向对象的三大特征之一，下面我们举个例子，Person类继承于NSObject，Student类继承于Person,Person类有name、age、nation三个属性，而Student类在这基础上增加了score属性有四个属性；其中在Person类中通过@property生成的_name、_age成员变量是private的，而nation的成员变量_nation是指定为protected的，而在Student类中，具有成员变量_nation和_score，_nation是继承自Person的，_score是自己生成的private的。
+
+**Person.h**
+```objective-c
+#import <Foundation/Foundation.h>
+
+@interface Person : NSObject {
+    @protected
+    NSString *_nation;
+}
+
+@property (nonatomic, copy) NSString *name;//姓名
+@property (nonatomic, assign) int age;//年龄
+@property (nonatomic, copy) NSString *nation;//籍贯
+
+//自定义实例构造方法
+- (id) initWithName:(NSString *) name andAge:(int) age;
+//自定义类构造方法
++ (id) personWithName:(NSString *) name andAge:(int) age;
+
+@end
+```
+
+**Person.m**
+```objective-c
+#import "Person.h"
+
+@implementation Person
+
+- (id) initWithName:(NSString *)name andAge:(int)age {
+    if (self = [super init]) {
+        self.name = name;
+        self.age = age;
+    }
+    return self;
+}
+
++ (id) personWithName:(NSString *)name andAge:(int)age {
+    Person *p = [[Person alloc ]initWithName:name andAge:age];
+    return p;
+}
+
+//重写description方法
+- (NSString *) description {
+    return [NSString stringWithFormat:@"name:%@,age:%i", self.name, self.age];
+}
+
+@end
+```
+
+**Student.h**
+```objective-c
+#import "Person.h"
+
+@interface Student : Person
+
+@property (nonatomic, assign) float score;//分数
+
+//自定义实例构造方法
+- (id) initWithName:(NSString *)name andAge:(int)age andScore:(float) score;
+//自定义类构造方法
++ (id) studentWithName:(NSString *) name andAge:(int) age andScore:(float) score;
+
+@end
+```
+
+**Student.m**
+```objective-c
+#import "Student.h"
+
+@implementation Student
+
+- (id) initWithName:(NSString *)name andAge:(int)age andScore:(float)score {
+    if (self = [super initWithName:name andAge:age]) {
+        self.score = score;
+    }
+    return self;
+}
+
++ (id) studentWithName:(NSString *)name andAge:(int)age andScore:(float)score {
+    Student *s = [[Student alloc] initWithName:name andAge:age andScore:score];
+    return s;
+}
+
+//重写description方法，这里能通过self.访问所有父类属性和自己定义的属性，但是self->只能访问自己的成员变量以及父类继承过来的protected成员变量
+- (NSString *) description {
+    return [NSString stringWithFormat:@"name:%@,age:%i,score:%.2f,nation:%@", self.name, self.age, self.score, self->_nation];
+}
+
+@end
+```
+
+**main.m**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "Person.h"
+#import "Student.h"
+
+int main(int argc, const char * argv[]) {
+    Person *p = [Person personWithName:@"Kin" andAge:28];
+    NSLog(@"p=%@", p);
+    
+    Student *s = [Student studentWithName:@"Kaoru" andAge:27 andScore:100];
+    s.nation = @"beijing";
+    NSLog(@"s=%@", s);
+    
+    return 0;
+}
+```
+
+
+
+
+
+

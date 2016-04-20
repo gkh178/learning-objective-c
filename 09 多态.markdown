@@ -1,0 +1,86 @@
+﻿# 09 多态
+
+Tags: Objective-C
+
+---
+
+多态直接贴代码解释吧，跟C++差不多。
+**GKHBase.h**
+```objective-c
+#import <Foundation/Foundation.h>
+
+@interface GKHBase : NSObject
+
+- (void) base;
+- (void) test;
+@end
+```
+**GKHBase.m**
+```objective-c
+#import "GKHBase.h"
+
+@implementation GKHBase
+- (void) base {
+    NSLog(@"这是父类的base方法");
+};
+
+- (void) test {
+    NSLog(@"这是父类的test方法");
+}
+@end
+```
+**GKHSub.h**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "GKHBase.h"
+
+@interface GKHSub : GKHBase
+- (void) sub;
+@end
+```
+**GKHSub.m**
+```objective-c
+#import "GKHSub.h"
+
+@implementation GKHSub
+- (void) sub {
+    NSLog(@"这是子类的sub方法");
+}
+@end
+```
+**main.m**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "GKHSub.h"
+
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        GKHBase *bc = [[GKHBase alloc] init];
+        [bc base];
+        [bc test];
+        
+        GKHSub *sc = [[GKHSub alloc] init];
+        [sc base];
+        [sc test];
+        [sc sub];
+        
+        //多态实现
+        GKHBase *bc1 = [[GKHSub alloc] init];
+        [bc1 base];
+        [bc1 test];
+        //因为bc1的编译类型是GKHBase，该类并没有提供sub方法，所以会导致编译错误
+        //[bc1 sub];
+        id bc2 = bc1;
+        [bc2 sub];
+        
+        //isKindOfClass:clazz方法判断对象是否是clazz或其子类的实例
+        NSLog(@"sc是否是GKHBase类及其子类的实例：%d", [sc isKindOfClass:[GKHBase class]]);
+        NSLog(@"sc是否是GKHSub类及其子类的实例：%d", [sc isKindOfClass:[GKHSub class]]);
+    }
+    return 0;
+}
+```
+
+
+
+

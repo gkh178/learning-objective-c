@@ -1,0 +1,155 @@
+﻿# 13 异常
+
+Tags: Objective-C
+
+---
+
+OC中的异常跟Java类似，使用@try{} @catch{} @finally{}来指示，一般来说@try块是必须的，而@catch和@finally块是可选的，二者可以同时存在也可以只有一个。
+
+下面是代码示例：
+**GKHEatable.h**
+```objective-c
+#import <Foundation/Foundation.h>
+
+@protocol GKHEatable <NSObject>
+@optional
+- (void) taste;
+@end
+```
+**GKHApple.h**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "GKHEatable.h"
+
+@interface GKHApple : NSObject <GKHEatable>
+
+@end
+```
+**GKHApple.m**
+```objective-c
+#import "GKHApple.h"
+
+@implementation GKHApple
+
+@end
+```
+**main.m**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "GKHApple.h"
+
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        @try {
+            GKHApple *apple = [[GKHApple alloc] init];
+            [apple taste];
+        }
+        //多个@catch块时候，异常类型越具体的应该放在前面，越高层放后面，NSException类型应该放最后
+        @catch (NSException *exception) {
+            NSLog(@"==捕捉异常==");
+            NSLog(@"捕捉异常：%@，原因为：%@，用户为：%@", exception.name, exception.reason, exception.userInfo);
+        }
+        @finally {
+            NSLog(@"资源回收！");
+        }
+    }
+    return 0;
+}
+```
+运行结果：
+> -[GKHApple taste]: unrecognized selector sent to instance 0x100300280
+==捕捉异常==
+捕捉异常：NSInvalidArgumentException，原因为：-[GKHApple taste]: unrecognized selector sent to instance 0x100300280，用户为：(null)
+
+不要在@finally块中使用如return或@throw等导致方法终止的语句，否则会导致@try块和@catch块中的return或@thro语句失效，如下例子：
+**main.m**
+```objecitive-c
+#import <Foundation/Foundation.h>
+
+BOOL test() {
+    @try {
+        //finally块中的return预计导致try块中的return语句失效
+        return YES;
+    }
+    @finally {
+        return NO;
+    }
+}
+
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        BOOL a = test();
+        NSLog(@"%d", a);//输出结果：0
+    }
+    return 0;
+}
+```
+
+当然我们也可以自定义异常类，一般都继承自NSException类，然后重写其中的方法，下面我们自己写个异常类，然后抛出该异常类，代码示例如下:
+**GKHException.h**
+```objective-c
+#import <Foundation/Foundation.h>
+
+//自定义异常类GKHException
+@interface GKHException : NSException
+@end
+```
+**GKHException.m**
+```objective-c
+#import "GKHException.h"
+
+@implementation GKHException
+@end
+```
+**GKHPerson.h**
+```objective-c
+#import <Foundation/Foundation.h>
+
+@interface GKHPerson : NSObject
+@property (nonatomic, assign) int age;
+@property (nonatomic, copy) NSString *name;
+@end
+```
+**GKHPerson.m**
+```objective-c
+#import "GKHPerson.h"
+#import "GKHException.h"
+
+@implementation GKHPerson
+- (void) setAge:(int)age {
+    
+    if (self.age != age) {
+        //检查年龄在0到100岁
+        if (age > 100 | age < 0) {
+            //抛出异常
+            @throw [[GKHException alloc] initWithName:@"IllegalArgumentException" reason:@"人的年龄必须在0-100之间" userInfo:nil];
+        }
+        _age = age;
+    }
+}
+@end
+```
+**main.m**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "GKHException.h"
+#import "GKHPerson.h"
+
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        GKHPerson *person = [[GKHPerson alloc] init];
+        person.age = 30;
+        NSLog(@"人的年龄为：%d", person.age);
+        person.age = 101;
+    }
+    return 0;
+}
+```
+运行结果：
+
+> 人的年龄为：30
+ \*** Terminating app due to uncaught exception 'IllegalArgumentException', reason: '人的年龄必须在0-100之间'
+
+
+
+

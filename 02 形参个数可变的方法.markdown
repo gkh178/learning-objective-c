@@ -1,0 +1,65 @@
+﻿# 02 形参个数可变的方法
+
+Tags: Objective-C
+
+---
+
+**VarArgs.h**
+```objective-c
+#import <Foundation/Foundation.h>
+
+@interface VarArgs : NSObject
+
+//定义一个形参个数可变的方法，表明可接受个数可变的NSString*参数
+//个数可变的形参只能放在形参列表的最后，且一个方法中最多只能有一个这样的形参
+- (void) test:(NSString *)name, ...;
+@end
+```
+**VarArgs.m**
+```objective-c
+#import "VarArgs.h"
+
+@implementation VarArgs
+- (void) test:(NSString *)name, ... {
+    va_list argList;//定义一个名为argList的指针变量，用来指向可变参数列表
+    //第一个参数存在才能处理后面的可变参数
+    if (name) {
+        NSLog(@"%@", name);
+        va_start(argList, name);//开始处理可变参数列表，并将argList指向可变参数列表的第一个参数
+        
+        //va_arg方法用来获取argList指向的当前的参数的值，然后将指针移动到下一个参数
+        NSString *arg = va_arg(argList, id);
+        
+        //当前参数的值不为nil时
+        while (arg) {
+            NSLog(@"%@", arg);
+            arg = va_arg(argList, id);
+        }
+        
+        va_end(argList);//结束处理可变参数列表，并释放argList指针变量
+    }
+}
+@end
+```
+**main.m**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "VarArgs.h"
+
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        VarArgs *va = [[VarArgs alloc]init];
+        [va test:@"我是参数1",@"我是参数2",@"我是参数3",@"我是参数4",nil];
+    }
+    return 0;
+}
+```
+
+运行结果如下：
+> 我是参数1
+我是参数2
+我是参数3
+我是参数4
+
+
+

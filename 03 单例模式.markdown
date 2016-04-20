@@ -1,0 +1,49 @@
+﻿# 03 单例模式
+
+Tags: Objective-C
+
+---
+
+**Singleton.h**
+```objective-c
+#import <Foundation/Foundation.h>
+
+@interface Singleton : NSObject
+
++ (id) getInstance;//定义一个类方法用来生成实例对象
+@end
+```
+
+**Singleton.m**
+```objective-c
+#import "Singleton.h"
+
+static id instance = nil;//用来保存生成的实例对象
+@implementation Singleton
+
++ (id) getInstance {
+    //如果是第一次实例化
+    if (!instance) {
+        instance = [[super alloc]init];
+    }
+    return instance;
+}
+@end
+```
+**main.m**
+```objective-c
+#import <Foundation/Foundation.h>
+#import "Singleton.h"
+
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        //判断两次生成的实例是否相等，返回1，因为表示同一个实例
+        NSLog(@"%d", [Singleton getInstance] == [Singleton getInstance]);
+    }
+    return 0;
+}
+```
+
+
+
+
